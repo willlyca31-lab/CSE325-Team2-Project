@@ -53,3 +53,33 @@ dkms.conf
 
 # debug information files
 *.dwo
+
+
+# .NET build output
+bin/
+obj/
+
+# Visual Studio user-specific files
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# VS Code local settings
+.vscode/
+
+# Local development secrets
+secrets.json
+.env
+.env.*
+! .env.example
+
+# Local SQLite database files
+*.db
+*.db-shm
+*.db-wal
+
+# Test results
+TestResults/
+coverage/
