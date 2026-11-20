@@ -5,9 +5,9 @@
 @inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject NavigationManager NavigationManager
 
-<PageTitle>Add a book</PageTitle>
+<PageTitle>Recommend a book</PageTitle>
 
-<h1>Add a book to the list</h1>
+<h1>Recommend a book to add to the list</h1>
 
 <h2>Book</h2>
 
@@ -18,18 +18,18 @@
             <DataAnnotationsValidator />
             <ValidationSummary class="text-danger" role="alert" />
             <div class="mb-3">
-                <label for="title" class="form-label">Title:</label>
-                <InputText id="title" @bind-Value="Book.Title" class="form-control" />
+                <label for="title" class="form-label">Title (required):</label>
+                <InputText id="title" @bind-Value="Book.Title" class="form-control" aria-required="true" />
                 <ValidationMessage For="() => Book.Title" class="text-danger" />
             </div>
             <div class="mb-3">
-                <label for="author" class="form-label">Author:</label>
-                <InputText id="author" @bind-Value="Book.Author" class="form-control" />
+                <label for="author" class="form-label">Author (required):</label>
+                <InputText id="author" @bind-Value="Book.Author" class="form-control" aria-required="true" />
                 <ValidationMessage For="() => Book.Author" class="text-danger" />
             </div>
             <div class="mb-3">
                 <label for="publishyear" class="form-label">Year Published:</label>
-                <InputNumber id="publishyear" @bind-Value="Book.PublishYear" class="form-label" />
+                <InputNumber id="publishyear" @bind-Value="Book.PublishYear" class="form-control" />
                 <ValidationMessage For="() => Book.PublishYear" class="text-danger" />
             </div>
             <div class="mb-3">
@@ -37,7 +37,7 @@
                 <InputText id="genre" @bind-Value="Book.Genre" class="form-control" />
                 <ValidationMessage For="() => Book.Genre" class="text-danger" />
             </div>
-            <button type="submit" class="btn btn-primary">Create</button>
+            <button type="submit" class="btn btn-primary">Submit Recommendation</button>
         </EditForm>
     </div>
 </div>
