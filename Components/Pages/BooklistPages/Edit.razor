@@ -34,9 +34,9 @@ else
                     <ValidationMessage For="() => Book.Author" class="text-danger" />
                 </div>
                 <div class="mb-3">
-                    <label for="publishdate" class="form-label">Published Date:</label>
-                    <InputDate id="publishdate" @bind-Value="Book.PublishDate" class="form-control" />
-                    <ValidationMessage For="() => Book.PublishDate" class="text-danger" />
+                    <label for="publishyear" class="form-label">Year Published:</label>
+                    <InputNumber id="publishyear" @bind-Value="Book.PublishYear" class="form-label" />
+                    <ValidationMessage For="() => Book.PublishYear" class="text-danger" />
                 </div>
                 <div class="mb-3">
                     <label for="genre" class="form-label">Genre:</label>
