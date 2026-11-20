@@ -1,0 +1,62 @@
+@page "/books/create"
+@using Microsoft.EntityFrameworkCore
+@using CSE325_Team2_Project.Data
+@using CSE325_Team2_Project.Models
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Add a book</PageTitle>
+
+<h1>Add a book to the list</h1>
+
+<h2>Book</h2>
+
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <EditForm method="post" Model="Book" OnValidSubmit="AddBook" FormName="create" Enhance>
+            <DataAnnotationsValidator />
+            <ValidationSummary class="text-danger" role="alert" />
+            <div class="mb-3">
+                <label for="title" class="form-label">Title:</label>
+                <InputText id="title" @bind-Value="Book.Title" class="form-control" />
+                <ValidationMessage For="() => Book.Title" class="text-danger" />
+            </div>
+            <div class="mb-3">
+                <label for="author" class="form-label">Author:</label>
+                <InputText id="author" @bind-Value="Book.Author" class="form-control" />
+                <ValidationMessage For="() => Book.Author" class="text-danger" />
+            </div>
+            <div class="mb-3">
+                <label for="publishyear" class="form-label">Year Published:</label>
+                <InputNumber id="publishyear" @bind-Value="Book.PublishYear" class="form-label" />
+                <ValidationMessage For="() => Book.PublishYear" class="text-danger" />
+            </div>
+            <div class="mb-3">
+                <label for="genre" class="form-label">Genre:</label>
+                <InputText id="genre" @bind-Value="Book.Genre" class="form-control" />
+                <ValidationMessage For="() => Book.Genre" class="text-danger" />
+            </div>
+            <button type="submit" class="btn btn-primary">Create</button>
+        </EditForm>
+    </div>
+</div>
+
+<div>
+    <a href="/books">Back to List</a>
+</div>
+
+@code {
+    [SupplyParameterFromForm]
+    private Book Book { get; set; } = default!;
+
+    protected override void OnInitialized() => Book ??= new();
+
+    private async Task AddBook()
+    {
+        using var context = DbFactory.CreateDbContext();
+        context.Books.Add(Book);
+        await context.SaveChangesAsync();
+        NavigationManager.NavigateTo("/books");
+    }
+}

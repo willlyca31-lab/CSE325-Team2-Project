@@ -1,0 +1,109 @@
+@page "/books/edit"
+@using Microsoft.EntityFrameworkCore
+@using CSE325_Team2_Project.Data
+@using CSE325_Team2_Project.Models
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Edit</PageTitle>
+
+<h1>Edit</h1>
+
+<h2>Book</h2>
+<hr />
+@if (Book is null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="row">
+        <div class="col-md-4">
+            <EditForm method="post" Model="Book" OnValidSubmit="UpdateBook" FormName="edit" Enhance>
+                <DataAnnotationsValidator />
+                <ValidationSummary role="alert" />
+                <input type="hidden" name="Book.Id" value="@Book.Id" />
+                <div class="mb-3">
+                    <label for="title" class="form-label">Title:</label>
+                    <InputText id="title" @bind-Value="Book.Title" class="form-control" />
+                    <ValidationMessage For="() => Book.Title" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                    <label for="author" class="form-label">Author:</label>
+                    <InputText id="author" @bind-Value="Book.Author" class="form-control" />
+                    <ValidationMessage For="() => Book.Author" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                    <label for="publishyear" class="form-label">Year Published:</label>
+                    <InputNumber id="publishyear" @bind-Value="Book.PublishYear" class="form-label" />
+                    <ValidationMessage For="() => Book.PublishYear" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                    <label for="genre" class="form-label">Genre:</label>
+                    <InputText id="genre" @bind-Value="Book.Genre" class="form-control" />
+                    <ValidationMessage For="() => Book.Genre" class="text-danger" />
+                </div>
+                <input type="hidden" name="Book.IsSelected" value="@Book.IsSelected" />
+
+                <button type="submit" class="btn btn-primary">Save</button>
+            </EditForm>
+        </div>
+    </div>
+}
+
+<div>
+    <a href="/books">Back to List</a>
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    private int Id { get; set; }
+
+    [SupplyParameterFromForm]
+    private Book? Book { get; set; }
+
+    [PersistentState]
+    public Book? BookState { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        Book ??= BookState ??= await context.Books.FirstOrDefaultAsync(b => b.Id == Id);
+
+        if (Book is null)
+        {
+            NavigationManager.NotFound();
+        }
+    }
+
+    private async Task UpdateBook()
+    {
+        using var context = DbFactory.CreateDbContext();
+        context.Attach(Book!).State = EntityState.Modified;
+
+        try
+        {
+            await context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!BookExists(Book!.Id))
+            {
+                NavigationManager.NotFound();
+                return;
+            }
+            else
+            {
+                throw;
+            }
+        }
+
+        NavigationManager.NavigateTo("/books");
+    }
+
+    private bool BookExists(int id)
+    {
+        using var context = DbFactory.CreateDbContext();
+        return context.Books.Any(e => e.Id == id);
+    }
+}
