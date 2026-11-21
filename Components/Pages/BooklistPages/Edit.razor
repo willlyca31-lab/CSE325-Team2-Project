@@ -24,18 +24,18 @@ else
                 <ValidationSummary role="alert" />
                 <input type="hidden" name="Book.Id" value="@Book.Id" />
                 <div class="mb-3">
-                    <label for="title" class="form-label">Title:</label>
-                    <InputText id="title" @bind-Value="Book.Title" class="form-control" />
+                    <label for="title" class="form-label">Title (required):</label>
+                    <InputText id="title" @bind-Value="Book.Title" class="form-control" aria-required="true" />
                     <ValidationMessage For="() => Book.Title" class="text-danger" />
                 </div>
                 <div class="mb-3">
-                    <label for="author" class="form-label">Author:</label>
-                    <InputText id="author" @bind-Value="Book.Author" class="form-control" />
+                    <label for="author" class="form-label">Author (required):</label>
+                    <InputText id="author" @bind-Value="Book.Author" class="form-control" aria-required="true" />
                     <ValidationMessage For="() => Book.Author" class="text-danger" />
                 </div>
                 <div class="mb-3">
                     <label for="publishyear" class="form-label">Year Published:</label>
-                    <InputNumber id="publishyear" @bind-Value="Book.PublishYear" class="form-label" />
+                    <InputNumber id="publishyear" @bind-Value="Book.PublishYear" class="form-control" />
                     <ValidationMessage For="() => Book.PublishYear" class="text-danger" />
                 </div>
                 <div class="mb-3">
@@ -45,7 +45,7 @@ else
                 </div>
                 <input type="hidden" name="Book.IsSelected" value="@Book.IsSelected" />
 
-                <button type="submit" class="btn btn-primary">Save</button>
+                <button type="submit" class="btn btn-primary">Save Changes</button>
             </EditForm>
         </div>
     </div>

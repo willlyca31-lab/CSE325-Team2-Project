@@ -3,7 +3,6 @@
 @using Microsoft.EntityFrameworkCore
 @using CSE325_Team2_Project.Data
 @using CSE325_Team2_Project.Models
-@implements IAsyncDisposable
 @inject IDbContextFactory<ApplicationDbContext> DbFactory
 @rendermode InteractiveServer
 
@@ -11,16 +10,24 @@
 
 <h1>Book List</h1>
 
+<div>
+    <label>
+        Search by title:
+        <input type="search" @bind="titleFilter" @bind:event="oninput" @bind:after="RefreshGrids" />
+    </label>
+</div>
+
 <p>
-    <a href="books/create">Add a new book to the list</a>
+    <a href="books/create">Recommend a new book for the list</a>
 </p>
 
-<QuickGrid Class="table" Items="context.Books">
-    <PropertyColumn Property="book => book.Title" Sortable="true" />
+<h2>Available to select</h2>
+
+<QuickGrid @ref="availableGrid" Class="table" ItemsProvider="availableProvider" Pagination="availablePagination">
+    <PropertyColumn Property="book => book.Title" Sortable="true" IsDefaultSortColumn="true" />
     <PropertyColumn Property="book => book.Author" Sortable="true" />
-    <PropertyColumn Property="book => book.PublishYear" Title="Year Published" Sortable="true" />
+    <PropertyColumn Property="book => book.PublishYear" Title="Year" Sortable="true" />
     <PropertyColumn Property="book => book.Genre" Sortable="true" />
-    <PropertyColumn Property="book => book.IsSelected" Title="Book has been selected" />
 
     <TemplateColumn Context="book">
         <a href="@($"books/edit?id={book.Id}")">Edit</a> |
@@ -29,13 +36,87 @@
     </TemplateColumn>
 </QuickGrid>
 
+<Paginator State="availablePagination" />
+
+<h2>Already selected</h2>
+
+<QuickGrid @ref="selectedGrid" Class="table" ItemsProvider="selectedProvider" Pagination="selectedPagination">
+    <PropertyColumn Property="book => book.Title" Sortable="true" IsDefaultSortColumn="true" />
+    <PropertyColumn Property="book => book.Author" Sortable="true" />
+    <PropertyColumn Property="book => book.PublishYear" Title="Year" Sortable="true" />
+    <PropertyColumn Property="book => book.Genre" Sortable="true" />
+
+    <TemplateColumn Context="book">
+        <a href="@($"books/edit?id={book.Id}")">Edit</a> |
+        <a href="@($"books/details?id={book.Id}")">Details</a>
+    </TemplateColumn>
+</QuickGrid>
+
+<Paginator State="selectedPagination" />
+
 @code {
-    private ApplicationDbContext context = default!;
+    // Two QuickGrids - one for available books and one for books that have already been selected
+    private QuickGrid<Book>? availableGrid;
+    private QuickGrid<Book>? selectedGrid;
+
+    // One shared filter box that filters both lists
+    private string titleFilter = string.Empty;
+
+    // pagination for each QuickGrid
+    private PaginationState availablePagination = new() { ItemsPerPage = 5 };
+    private PaginationState selectedPagination = new() { ItemsPerPage = 5 };
+
+    // each grid has its own provider
+    private GridItemsProvider<Book> availableProvider = default!;
+    private GridItemsProvider<Book> selectedProvider = default!;
 
     protected override void OnInitialized()
     {
-        context = DbFactory.CreateDbContext();
+        availableProvider = CreateProvider(isSelected: false);
+        selectedProvider = CreateProvider(isSelected: true);
     }
 
-    public async ValueTask DisposeAsync() => await context.DisposeAsync();
+    // Builds a provider for one list. The only difference between
+    // the two lists is which IsSelected value they show.
+    // Calling this with "false" gives the "available" provider; calling
+    // it with "true" gives the "selected" provider, like calling a functino
+    // with different arguments.
+    private GridItemsProvider<Book> CreateProvider(bool isSelected)
+    {
+        return async request =>
+        {
+            await using var context = await DbFactory.CreateDbContextAsync(request.CancellationToken);
+
+            var query = context.Books
+                .Where(b => b.IsSelected == isSelected)
+                .Where(b => b.Title.ToUpper().Contains(titleFilter.ToUpper()));
+
+            var totalCount = await query.CountAsync(request.CancellationToken);
+
+            query = request.ApplySorting(query).Skip(request.StartIndex);
+            if (request.Count.HasValue)
+            {
+                query = query.Take(request.Count.Value);
+            }
+
+            var books = await query.ToListAsync(request.CancellationToken);
+            return GridItemsProviderResult.From(books, totalCount);
+        };
+    }
+
+    // Runs after each keystroke in the search box
+    private async Task RefreshGrids()
+    {
+        await availablePagination.SetCurrentPageIndexAsync(0);
+        await selectedPagination.SetCurrentPageIndexAsync(0);
+
+        if (availableGrid is not null)
+        {
+            await availableGrid.RefreshDataAsync();
+        }
+        if (selectedGrid is not null)
+        {
+            await selectedGrid.RefreshDataAsync();
+        }
+    }
 }
