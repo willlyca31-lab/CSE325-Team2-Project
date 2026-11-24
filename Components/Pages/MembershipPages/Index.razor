@@ -1,0 +1,111 @@
+
+@page "/memberships"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@rendermode InteractiveServer
+
+@using CSE325_Team2_Project.Models
+@using CSE325_Team2_Project.Services
+
+@inject MembershipService MembershipService
+
+<PageTitle>Membership List</PageTitle>
+
+<h1>Membership List</h1>
+
+<p>View the members registered in Novel Gatherings.</p>
+
+@if (clubs.Count == 0)
+{
+    <div class="alert alert-warning">
+        No book clubs have been created.
+    </div>
+}
+else
+{
+    <div class="mb-3">
+        <label class="form-label">Select Book Club</label>
+
+        <select class="form-select"
+                @bind="selectedClubId"
+                @bind:after="LoadMembersAsync">
+
+            @foreach (var club in clubs)
+            {
+                <option value="@club.Id">@club.Name</option>
+            }
+        </select>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-body">
+            <h5>Club Members</h5>
+            <h2>@members.Count</h2>
+            <span class="text-muted">Active memberships</span>
+        </div>
+    </div>
+
+    @if (members.Count == 0)
+    {
+        <p>No members have joined this club yet.</p>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Joined</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    @foreach (var membership in members)
+                    {
+                        <tr>
+                            <td>@membership.User.FullName</td>
+                            <td>@membership.User.Email</td>
+                            <td>@membership.JoinedAt.ToLocalTime().ToString("MMM dd, yyyy")</td>
+                            <td>
+                                <span class="badge bg-success">
+                                    @membership.Status
+                                </span>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+}
+
+@code {
+    private List<Club> clubs = new();
+    private List<Membership> members = new();
+
+    private int selectedClubId;
+
+    // Loads the clubs and selects the first available club.
+    protected override async Task OnInitializedAsync()
+    {
+        clubs = await MembershipService.GetClubsAsync();
+
+        if (clubs.Count > 0)
+        {
+            selectedClubId = clubs[0].Id;
+            await LoadMembersAsync();
+        }
+    }
+
+    // Refreshes the membership list when the selected club changes.
+    private async Task LoadMembersAsync()
+    {
+        if (selectedClubId > 0)
+        {
+            members = await MembershipService
+                .GetMembershipsAsync(selectedClubId);
+        }
+    }
+}

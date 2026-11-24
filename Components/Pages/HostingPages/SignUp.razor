@@ -1,0 +1,263 @@
+
+@page "/hosting-signup"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@rendermode InteractiveServer
+
+@using System.Security.Claims
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Components.Authorization
+@using CSE325_Team2_Project.Models
+@using CSE325_Team2_Project.Services
+
+@inject HostingSignupService HostingService
+@inject MembershipService MembershipService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<PageTitle>Hosting Sign Up</PageTitle>
+
+<h1>Hosting Sign Up</h1>
+
+<p>Sign up to host an upcoming Novel Gatherings meeting.</p>
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger">
+        @errorMessage
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(successMessage))
+{
+    <div class="alert alert-success">
+        @successMessage
+    </div>
+}
+
+@if (clubs.Count == 0)
+{
+    <div class="alert alert-warning">
+        No clubs are currently available.
+    </div>
+}
+else if (approvedBooks.Count == 0)
+{
+    <div class="alert alert-warning">
+        No approved books are currently available for hosting.
+    </div>
+}
+else
+{
+    <div class="card mb-4">
+        <div class="card-body">
+
+            <h4>Register to Host</h4>
+
+            <EditForm Model="formModel"
+                      OnValidSubmit="SubmitSignupAsync">
+
+                <DataAnnotationsValidator />
+
+                <ValidationSummary class="text-danger" />
+
+                <div class="mb-3">
+                    <label class="form-label">Book Club</label>
+
+                    <InputSelect class="form-select"
+                                 @bind-Value="formModel.ClubId">
+
+                        @foreach (var club in clubs)
+                        {
+                            <option value="@club.Id">
+                                @club.Name
+                            </option>
+                        }
+
+                    </InputSelect>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Select Approved Book</label>
+
+                    <InputSelect class="form-select"
+                                 @bind-Value="formModel.BookId">
+
+                        <option value="0">Select a book</option>
+
+                        @foreach (var book in approvedBooks)
+                        {
+                            <option value="@book.Id">
+                                @book.Title — @book.Author
+                            </option>
+                        }
+
+                    </InputSelect>
+
+                    <ValidationMessage For="() => formModel.BookId"
+                                       class="text-danger" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Hosting Date</label>
+
+                    <InputDate class="form-control"
+                               @bind-Value="formModel.HostingDate" />
+
+                    <ValidationMessage For="() => formModel.HostingDate"
+                                       class="text-danger" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Additional Notes</label>
+
+                    <InputTextArea class="form-control"
+                                   @bind-Value="formModel.Notes" />
+                </div>
+
+                <button type="submit" class="btn btn-primary">
+                    Submit Hosting Registration
+                </button>
+
+            </EditForm>
+
+        </div>
+    </div>
+}
+
+<h3>Upcoming Hosting Registrations</h3>
+
+@if (hostingSignups.Count == 0)
+{
+    <p>No hosting registrations are available for this club.</p>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Host</th>
+                    <th>Book</th>
+                    <th>Date</th>
+                    <th>Notes</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                @foreach (var signup in hostingSignups)
+                {
+                    <tr>
+                        <td>@signup.HostUser.FullName</td>
+                        <td>@signup.Book.Title</td>
+                        <td>@signup.HostingDate.ToString("MMM dd, yyyy")</td>
+                        <td>@signup.Notes</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    private List<Club> clubs = new();
+    private List<Book> approvedBooks = new();
+    private List<HostingSignup> hostingSignups = new();
+
+    private string? currentUserId;
+    private string? errorMessage;
+    private string? successMessage;
+
+    private HostingForm formModel = new()
+    {
+        HostingDate = DateTime.Today.AddDays(7)
+    };
+
+    // Loads clubs, approved books, and the authenticated user.
+    protected override async Task OnInitializedAsync()
+    {
+        var authState =
+            await AuthenticationStateProvider.GetAuthenticationStateAsync();
+
+        currentUserId = authState.User.FindFirst(
+            ClaimTypes.NameIdentifier)?.Value;
+
+        clubs = await MembershipService.GetClubsAsync();
+
+        approvedBooks = await HostingService.GetApprovedBooksAsync();
+
+        if (clubs.Count > 0)
+        {
+            formModel.ClubId = clubs[0].Id;
+
+            await LoadHostingSignupsAsync();
+        }
+    }
+
+    // Loads existing hosting registrations for the selected club.
+    private async Task LoadHostingSignupsAsync()
+    {
+        if (formModel.ClubId > 0)
+        {
+            hostingSignups = await HostingService
+                .GetHostingSignupsAsync(formModel.ClubId);
+        }
+    }
+
+    // Validates and saves a new hosting registration.
+    private async Task SubmitSignupAsync()
+    {
+        errorMessage = null;
+        successMessage = null;
+
+        if (string.IsNullOrEmpty(currentUserId))
+        {
+            errorMessage = "You must be logged in.";
+            return;
+        }
+
+        if (formModel.BookId <= 0)
+        {
+            errorMessage = "Please select an approved book.";
+            return;
+        }
+
+        try
+        {
+            var signup = new HostingSignup
+            {
+                ClubId = formModel.ClubId,
+                HostUserId = currentUserId,
+                BookId = formModel.BookId,
+                HostingDate = formModel.HostingDate,
+                Notes = formModel.Notes
+            };
+
+            await HostingService.CreateHostingSignupAsync(signup);
+
+            successMessage = "Your hosting registration was submitted successfully!";
+
+            formModel.Notes = string.Empty;
+
+            await LoadHostingSignupsAsync();
+        }
+        catch (InvalidOperationException ex)
+        {
+            errorMessage = ex.Message;
+        }
+    }
+
+    // Holds the information entered in the hosting registration form.
+    private class HostingForm
+    {
+        [Range(1, int.MaxValue, ErrorMessage = "Select a club.")]
+        public int ClubId { get; set; }
+
+        [Range(1, int.MaxValue, ErrorMessage = "Select an approved book.")]
+        public int BookId { get; set; }
+
+        [Required]
+        public DateTime HostingDate { get; set; }
+
+        [StringLength(500)]
+        public string? Notes { get; set; }
+    }
+}
