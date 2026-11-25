@@ -1,18 +1,13 @@
 ﻿@page "/Account/Register"
 
 @using System.ComponentModel.DataAnnotations
-@using System.Text
-@using System.Text.Encodings.Web
 @using Microsoft.AspNetCore.Identity
-@using Microsoft.AspNetCore.WebUtilities
 @using CSE325_Team2_Project.Data
 
 @inject UserManager<ApplicationUser> UserManager
 @inject IUserStore<ApplicationUser> UserStore
 @inject SignInManager<ApplicationUser> SignInManager
-@inject IEmailSender<ApplicationUser> EmailSender
 @inject ILogger<Register> Logger
-@inject NavigationManager NavigationManager
 @inject IdentityRedirectManager RedirectManager
 
 <PageTitle>Register</PageTitle>
@@ -25,8 +20,79 @@
         <EditForm Model="Input" method="post" OnValidSubmit="RegisterUser" FormName="register">
             <DataAnnotationsValidator />
             <h2>Create a new account.</h2>
-            <hr />
-            <ValidationSummary class="text-danger" role="alert" />
+            <hr />            
+
+    <div class="form-floating mb-3">
+        <InputText @bind-Value="Input.FirstName"
+                id="Input.FirstName"
+                class="form-control"
+                autocomplete="given-name"
+                placeholder="First name" />
+        <label for="Input.FirstName">First Name</label>
+        <ValidationMessage For="() => Input.FirstName" class="text-danger" />
+    </div>
+
+    <div class="form-floating mb-3">
+        <InputText @bind-Value="Input.LastName"
+                id="Input.LastName"
+                class="form-control"
+                autocomplete="family-name"
+                placeholder="Last name" />
+        <label for="Input.LastName">Last Name</label>
+        <ValidationMessage For="() => Input.LastName" class="text-danger" />
+    </div>
+
+    <div class="form-floating mb-3">
+        <InputText @bind-Value="Input.StreetAddress"
+                id="Input.StreetAddress"
+                class="form-control"
+                autocomplete="street-address"
+                placeholder="Street address" />
+        <label for="Input.StreetAddress">Street Address</label>
+        <ValidationMessage For="() => Input.StreetAddress" class="text-danger" />
+    </div>
+
+    <div class="form-floating mb-3">
+        <InputText @bind-Value="Input.City"
+                id="Input.City"
+                class="form-control"
+                autocomplete="address-level2"
+                placeholder="City" />
+        <label for="Input.City">City</label>
+        <ValidationMessage For="() => Input.City" class="text-danger" />
+    </div>
+
+    <div class="form-floating mb-3">
+        <InputText @bind-Value="Input.State"
+                id="Input.State"
+                class="form-control"
+                autocomplete="address-level1"
+                placeholder="State" />
+        <label for="Input.State">State</label>
+        <ValidationMessage For="() => Input.State" class="text-danger" />
+    </div>
+
+    <div class="form-floating mb-3">
+        <InputText @bind-Value="Input.ZipCode"
+                id="Input.ZipCode"
+                class="form-control"
+                autocomplete="postal-code"
+                placeholder="ZIP code" />
+        <label for="Input.ZipCode">ZIP Code</label>
+        <ValidationMessage For="() => Input.ZipCode" class="text-danger" />
+    </div>
+
+    <div class="form-floating mb-3">
+        <InputText @bind-Value="Input.PhoneNumber"
+                id="Input.PhoneNumber"
+                type="tel"
+                class="form-control"
+                autocomplete="tel"
+                placeholder="Phone number" />
+        <label for="Input.PhoneNumber">Phone Number (Optional)</label>
+        <ValidationMessage For="() => Input.PhoneNumber" class="text-danger" />
+    </div>
+
             <div class="form-floating mb-3">
                 <InputText @bind-Value="Input.Email" id="Input.Email" class="form-control" autocomplete="username" aria-required="true" placeholder="name@example.com" />
                 <label for="Input.Email">Email</label>
@@ -53,8 +119,6 @@
     [SupplyParameterFromForm]
     private InputModel Input { get; set; } = default!;
 
-    [SupplyParameterFromQuery]
-    private string? ReturnUrl { get; set; }
 
     private string? Message => identityErrors is null ? null : $"Error: {string.Join(", ", identityErrors.Select(error => error.Description))}";
 
@@ -67,11 +131,26 @@
     {
         var user = CreateUser();
 
+        //Add fields not included in the default IdentityUser class to the ApplicationUser class
+        user.FirstName = Input.FirstName.Trim();
+        user.LastName = Input.LastName.Trim();
+        user.StreetAddress = Input.StreetAddress.Trim();
+        user.City = Input.City.Trim();
+        user.State = Input.State.Trim();
+        user.ZipCode = Input.ZipCode.Trim();
+        user.PhoneNumber = string.IsNullOrWhiteSpace(Input.PhoneNumber)
+            ? null
+            : Input.PhoneNumber.Trim();
+
+        //Set the username and email using IdentityUser
         await UserStore.SetUserNameAsync(user, Input.Email, CancellationToken.None);
         var emailStore = GetEmailStore();
         await emailStore.SetEmailAsync(user, Input.Email, CancellationToken.None);
+        
+        //Create the account
         var result = await UserManager.CreateAsync(user, Input.Password);
 
+        //Check for errors
         if (!result.Succeeded)
         {
             identityErrors = result.Errors;
@@ -80,26 +159,11 @@
 
         Logger.LogInformation("User created a new account with password.");
 
-        var userId = await UserManager.GetUserIdAsync(user);
-        var code = await UserManager.GenerateEmailConfirmationTokenAsync(user);
-        code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
-        var callbackUrl = NavigationManager.GetUriWithQueryParameters(
-            NavigationManager.ToAbsoluteUri("Account/ConfirmEmail").AbsoluteUri,
-            new Dictionary<string, object?> { ["userId"] = userId, ["code"] = code, ["returnUrl"] = ReturnUrl });
+        // Automatically sign in the new member
+        await SignInManager.SignInAsync(user, isPersistent: false);
 
-        await EmailSender.SendConfirmationLinkAsync(user, Input.Email, HtmlEncoder.Default.Encode(callbackUrl));
-
-        if (UserManager.Options.SignIn.RequireConfirmedAccount)
-        {
-            RedirectManager.RedirectTo(
-                "Account/RegisterConfirmation",
-                new() { ["email"] = Input.Email, ["returnUrl"] = ReturnUrl });
-        }
-        else
-        {
-            await SignInManager.SignInAsync(user, isPersistent: false);
-            RedirectManager.RedirectTo(ReturnUrl);
-        }
+        // Redirect to the home page
+        RedirectManager.RedirectTo("/");
     }
 
     private ApplicationUser CreateUser()
@@ -126,6 +190,35 @@
 
     private sealed class InputModel
     {
+        
+        [Required]
+        [StringLength(100)]
+        public string FirstName { get; set; } = "";
+
+        [Required]
+        [StringLength(100)]
+        public string LastName { get; set; } = "";
+
+        [Required]
+        public string StreetAddress { get; set; } = "";
+
+        [Required]
+        public string City { get; set; } = "";
+
+        [Required]
+        public string State { get; set; } = "";
+
+        [Required]
+        [RegularExpression(@"^\d{5}(-\d{4})?$",
+            ErrorMessage = "Enter a valid ZIP code.")]
+        public string ZipCode { get; set; } = "";
+
+        [RegularExpression( //Replace [Phone] because it was giving errors even though phone number is optional
+        @"^$|^(?:\+1[\s.-]?)?\(?[2-9]\d{2}\)?[\s.-]?[2-9]\d{2}[\s.-]?\d{4}$",
+        ErrorMessage = "Please enter a valid phone number.")] //Set up for 10 digit phone numbers used in the US
+        public string? PhoneNumber { get; set; } = "";
+
+        
         [Required]
         [EmailAddress]
         [Display(Name = "Email")]

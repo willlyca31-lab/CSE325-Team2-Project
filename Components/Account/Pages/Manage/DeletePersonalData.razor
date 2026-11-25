@@ -9,15 +9,19 @@
 @inject IdentityRedirectManager RedirectManager
 @inject ILogger<DeletePersonalData> Logger
 
-<PageTitle>Delete Personal Data</PageTitle>
+<PageTitle>Delete Account</PageTitle>
 
 <StatusMessage Message="@message" />
 
-<h3>Delete Personal Data</h3>
+<h3>Delete Account</h3>
 
 <div class="alert alert-warning" role="alert">
     <p>
-        <strong>Deleting this data will permanently remove your account, and this cannot be recovered.</strong>
+        <strong>Are you sure you want to delete your account?</strong>
+    </p>
+    <p class="mb-0">
+        This action is permanent and cannot be undone.
+        Your account and personal information will be deleted.
     </p>
 </div>
 
@@ -33,7 +37,10 @@
                 <ValidationMessage For="() => Input.Password" class="text-danger" />
             </div>
         }
-        <button class="w-100 btn btn-lg btn-danger" type="submit">Delete data and close my account</button>
+        <button class="w-100 btn btn-lg btn-danger" type="submit">Permanently Delete My Account</button>
+        <a href="/Account/Manage"class="w-100 btn btn-outline-secondary mt-2">
+            Cancel
+        </a>
     </EditForm>
 </div>
 
@@ -86,7 +93,7 @@
         var userId = await UserManager.GetUserIdAsync(user);
         Logger.LogInformation("User with ID '{UserId}' deleted themselves.", userId);
 
-        RedirectManager.RedirectToCurrentPage();
+        RedirectManager.RedirectTo("/");
     }
 
     private sealed class InputModel

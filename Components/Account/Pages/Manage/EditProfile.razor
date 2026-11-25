@@ -1,0 +1,253 @@
+
+@page "/Account/Manage/EditProfile"
+
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Identity
+@using CSE325_Team2_Project.Data
+
+@inject UserManager<ApplicationUser> UserManager
+@inject SignInManager<ApplicationUser> SignInManager
+@inject IdentityRedirectManager RedirectManager
+
+<PageTitle>Edit Profile</PageTitle>
+
+<h3>Edit Profile</h3>
+<StatusMessage />
+
+<div class="row">
+    <div class="col-xl-6">
+        <EditForm Model="Input" FormName="edit-profile"
+                  OnValidSubmit="OnValidSubmitAsync" method="post">
+            <DataAnnotationsValidator />
+
+            <div class="form-floating mb-3">
+                <InputText @bind-Value="Input.FirstName"
+                           id="Input.FirstName"
+                           class="form-control"
+                           placeholder="First name" />
+                <label for="Input.FirstName">First Name</label>
+                <ValidationMessage For="() => Input.FirstName"
+                                   class="text-danger" />
+            </div>
+
+            <div class="form-floating mb-3">
+                <InputText @bind-Value="Input.LastName"
+                           id="Input.LastName"
+                           class="form-control"
+                           placeholder="Last name" />
+                <label for="Input.LastName">Last Name</label>
+                <ValidationMessage For="() => Input.LastName"
+                                   class="text-danger" />
+            </div>
+
+            <div class="form-floating mb-3">
+                <InputText @bind-Value="Input.Email"
+                           id="Input.Email"
+                           type="email"
+                           class="form-control"
+                           autocomplete="email"
+                           placeholder="Email" />
+                <label for="Input.Email">Email</label>
+                <ValidationMessage For="() => Input.Email"
+                                   class="text-danger" />
+            </div>
+
+            <div class="form-floating mb-3">
+                <InputText @bind-Value="Input.PhoneNumber"
+                           id="Input.PhoneNumber"
+                           type="tel"
+                           class="form-control"
+                           autocomplete="tel"
+                           placeholder="Phone number" />
+                <label for="Input.PhoneNumber">Phone Number (Optional)</label>
+                <ValidationMessage For="() => Input.PhoneNumber"
+                                   class="text-danger" />
+            </div>
+
+            <div class="form-floating mb-3">
+                <InputText @bind-Value="Input.StreetAddress"
+                           id="Input.StreetAddress"
+                           class="form-control"
+                           placeholder="Street address" />
+                <label for="Input.StreetAddress">Street Address</label>
+                <ValidationMessage For="() => Input.StreetAddress"
+                                   class="text-danger" />
+            </div>
+
+            <div class="form-floating mb-3">
+                <InputText @bind-Value="Input.City"
+                           id="Input.City"
+                           class="form-control"
+                           placeholder="City" />
+                <label for="Input.City">City</label>
+                <ValidationMessage For="() => Input.City"
+                                   class="text-danger" />
+            </div>
+
+            <div class="form-floating mb-3">
+                <InputText @bind-Value="Input.State"
+                           id="Input.State"
+                           class="form-control"
+                           placeholder="State" />
+                <label for="Input.State">State</label>
+                <ValidationMessage For="() => Input.State"
+                                   class="text-danger" />
+            </div>
+
+            <div class="form-floating mb-3">
+                <InputText @bind-Value="Input.ZipCode"
+                           id="Input.ZipCode"
+                           class="form-control"
+                           placeholder="ZIP code" />
+                <label for="Input.ZipCode">ZIP Code</label>
+                <ValidationMessage For="() => Input.ZipCode"
+                                   class="text-danger" />
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">
+                    Save Changes
+                </button>
+                <a href="/Account/Manage"
+                   class="btn btn-outline-secondary">
+                    Cancel
+                </a>
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    private ApplicationUser? user;
+    private string? originalEmail;
+
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    [SupplyParameterFromForm]
+    private InputModel Input { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Input ??= new();
+
+        user = await UserManager.GetUserAsync(HttpContext.User);
+
+        if (user is null)
+        {
+            RedirectManager.RedirectToInvalidUser(UserManager, HttpContext);
+            return;
+        }
+
+        originalEmail = await UserManager.GetEmailAsync(user);
+
+        if (HttpContext.Request.Method == "GET")
+        {
+            Input.FirstName = user.FirstName;
+            Input.LastName = user.LastName;
+            Input.Email = originalEmail ?? "";
+            Input.PhoneNumber = user.PhoneNumber;
+            Input.StreetAddress = user.StreetAddress;
+            Input.City = user.City;
+            Input.State = user.State;
+            Input.ZipCode = user.ZipCode;
+        }
+    }
+
+    private async Task OnValidSubmitAsync()
+    {
+        if (user is null)
+        {
+            RedirectManager.RedirectToInvalidUser(UserManager, HttpContext);
+            return;
+        }
+
+        var newEmail = Input.Email.Trim();
+
+        // Check whether another account already uses this email.
+        if (!string.Equals(newEmail, originalEmail,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            var existingUser = await UserManager.FindByEmailAsync(newEmail);
+
+            if (existingUser is not null && existingUser.Id != user.Id)
+            {
+                RedirectManager.RedirectToCurrentPageWithStatus(
+                    "Error: This email address is already in use.",
+                    HttpContext);
+                return;
+            }
+        }
+
+        // Update custom profile information.
+        user.FirstName = Input.FirstName.Trim();
+        user.LastName = Input.LastName.Trim();
+        user.StreetAddress = Input.StreetAddress.Trim();
+        user.City = Input.City.Trim();
+        user.State = Input.State.Trim();
+        user.ZipCode = Input.ZipCode.Trim();
+        user.PhoneNumber = string.IsNullOrWhiteSpace(Input.PhoneNumber)
+            ? null
+            : Input.PhoneNumber.Trim();
+
+        // Update email and username together on the user object.
+        // UserManager.UpdateAsync will persist the changes.
+        if (!string.Equals(newEmail, originalEmail,
+                StringComparison.Ordinal))
+        {
+            user.Email = newEmail;
+            user.UserName = newEmail;
+            user.EmailConfirmed = false;
+        }
+
+        var result = await UserManager.UpdateAsync(user);
+
+        if (!result.Succeeded)
+        {
+            RedirectManager.RedirectToCurrentPageWithStatus(
+                "Error: " + string.Join(", ",
+                    result.Errors.Select(error => error.Description)),
+                HttpContext);
+            return;
+        }
+
+        await SignInManager.RefreshSignInAsync(user);
+
+        RedirectManager.RedirectTo(
+            "/Account/Manage");
+    }
+
+    private sealed class InputModel
+    {
+        [Required]
+        [StringLength(100)]
+        public string FirstName { get; set; } = "";
+
+        [Required]
+        [StringLength(100)]
+        public string LastName { get; set; } = "";
+
+        [Required]
+        [EmailAddress]
+        public string Email { get; set; } = "";
+
+        [RegularExpression(
+            @"^$|^(?:\+1[\s.-]?)?\(?[2-9]\d{2}\)?[\s.-]?[2-9]\d{2}[\s.-]?\d{4}$",
+            ErrorMessage = "Please enter a valid 10-digit US phone number.")]
+        public string? PhoneNumber { get; set; }
+
+        [Required]
+        public string StreetAddress { get; set; } = "";
+
+        [Required]
+        public string City { get; set; } = "";
+
+        [Required]
+        public string State { get; set; } = "";
+
+        [Required]
+        [RegularExpression(@"^\d{5}(-\d{4})?$",
+            ErrorMessage = "Enter a valid ZIP code.")]
+        public string ZipCode { get; set; } = "";
+    }
+}

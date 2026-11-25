@@ -1,91 +1,100 @@
-﻿@page "/Account/Manage"
+﻿
+@page "/Account/Manage"
 
-@using System.ComponentModel.DataAnnotations
 @using Microsoft.AspNetCore.Identity
 @using CSE325_Team2_Project.Data
 
 @inject UserManager<ApplicationUser> UserManager
-@inject SignInManager<ApplicationUser> SignInManager
 @inject IdentityRedirectManager RedirectManager
 
-<PageTitle>Profile</PageTitle>
+<PageTitle>My Profile</PageTitle>
 
-<h3>Profile</h3>
+<h3>My Profile</h3>
 <StatusMessage />
 
-<div class="row">
-    <div class="col-xl-6">
-        <EditForm Model="Input" FormName="profile" OnValidSubmit="OnValidSubmitAsync" method="post">
-            <DataAnnotationsValidator />
-            <ValidationSummary class="text-danger" role="alert" />
-            <div class="form-floating mb-3">
-                <input type="text" value="@username" id="username" class="form-control" placeholder="Choose your username." disabled />
-                <label for="username" class="form-label">Username</label>
+@if (user is not null)
+{
+    <div class="card mb-4">
+        <div class="card-body">
+            <h4 class="card-title mb-3">Personal Information</h4>
+
+            <dl class="row">
+                <dt class="col-sm-4">Name</dt>
+                <dd class="col-sm-8">
+                    @user.FirstName @user.LastName
+                </dd>
+
+                <dt class="col-sm-4">Email</dt>
+                <dd class="col-sm-8">
+                    @user.Email
+                </dd>
+
+                <dt class="col-sm-4">Phone Number</dt>
+                <dd class="col-sm-8">
+                    @(string.IsNullOrWhiteSpace(user.PhoneNumber)
+                        ? "Not provided"
+                        : user.PhoneNumber)
+                </dd>
+
+                <dt class="col-sm-4">Address</dt>
+                <dd class="col-sm-8">
+                    @user.StreetAddress<br />
+                    @user.City, @user.State @user.ZipCode
+                </dd>
+            </dl>
+
+            <div class="d-flex gap-2 flex-wrap">
+                <a href="/Account/Manage/EditProfile"
+                class="btn btn-primary">
+                    Edit Profile
+                </a>
+
+                <a href="/Account/Manage/ChangePassword"
+                class="btn btn-outline-primary">
+                    Change Password
+                </a>
+
+                <a href="/Account/Manage/DeletePersonalData"
+                class="btn btn-outline-danger">
+                    Delete Account
+                </a>
             </div>
-            <div class="form-floating mb-3">
-                <InputText @bind-Value="Input.PhoneNumber" id="Input.PhoneNumber" class="form-control" placeholder="Enter your phone number" />
-                <label for="Input.PhoneNumber" class="form-label">Phone number</label>
-                <ValidationMessage For="() => Input.PhoneNumber" class="text-danger" />
-            </div>
-            <button type="submit" class="w-100 btn btn-lg btn-primary">Save</button>
-        </EditForm>
+        </div>
     </div>
-</div>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <h4 class="card-title">My Hosting Sign-Ups</h4>
+            <p class="text-muted mb-0">
+                Your upcoming hosting dates will appear here.
+            </p>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <h4 class="card-title">My Book Recommendations</h4>
+            <p class="text-muted mb-0">
+                Books you've recommended will appear here.
+            </p>
+        </div>
+    </div>
+}
 
 @code {
     private ApplicationUser? user;
-    private string? username;
-    private string? phoneNumber;
 
     [CascadingParameter]
     private HttpContext HttpContext { get; set; } = default!;
 
-    [SupplyParameterFromForm]
-    private InputModel Input { get; set; } = default!;
-
     protected override async Task OnInitializedAsync()
     {
-        Input ??= new();
-
         user = await UserManager.GetUserAsync(HttpContext.User);
+
         if (user is null)
         {
-            RedirectManager.RedirectToInvalidUser(UserManager, HttpContext);
-            return;
+            RedirectManager.RedirectToInvalidUser(
+                UserManager, HttpContext);
         }
-
-        username = await UserManager.GetUserNameAsync(user);
-        phoneNumber = await UserManager.GetPhoneNumberAsync(user);
-
-        Input.PhoneNumber ??= phoneNumber;
-    }
-
-    private async Task OnValidSubmitAsync()
-    {
-        if (user is null)
-        {
-            RedirectManager.RedirectToInvalidUser(UserManager, HttpContext);
-            return;
-        }
-
-        if (Input.PhoneNumber != phoneNumber)
-        {
-            var setPhoneResult = await UserManager.SetPhoneNumberAsync(user, Input.PhoneNumber);
-            if (!setPhoneResult.Succeeded)
-            {
-                RedirectManager.RedirectToCurrentPageWithStatus("Error: Failed to set phone number.", HttpContext);
-                return;
-            }
-        }
-
-        await SignInManager.RefreshSignInAsync(user);
-        RedirectManager.RedirectToCurrentPageWithStatus("Your profile has been updated", HttpContext);
-    }
-
-    private sealed class InputModel
-    {
-        [Phone]
-        [Display(Name = "Phone number")]
-        public string? PhoneNumber { get; set; }
     }
 }
